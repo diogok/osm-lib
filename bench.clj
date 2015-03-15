@@ -5,7 +5,8 @@
         counter (atom 0)
         last-node (atom nil)]
     (read-stream-swap brazil
-      (fn [n] (do (println @counter ":" (:id (:properties n)))
+      (fn [n] (do 
+                  #_(println @counter ":" (:id (:properties n)) "->" (get-in n [:geometry :coordinates]))
                   (swap! counter inc) 
                   (swap! last-node (fn[a] n)))))
     (assert (= counter 1000))

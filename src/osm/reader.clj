@@ -1,9 +1,7 @@
-(ns osm.core
-  (:require [riffle.write :as w] [riffle.read :as r])
+(ns osm.reader
   (:require [clj-leveldb :as l] [byte-streams :as bs])
   (:require [clojure.java.io :as io]
-            [clojure.data.xml :as xml]
-            [clojure.data.json :as json]))
+            [clojure.data.xml :as xml]))
 
 (defn bz2
   "Returns a streaming Reader for a compressed bzip2 file."
@@ -38,6 +36,7 @@
    {
     :type "Feature"
     :properties (get-props node)
+    :id (:id (:attrs node))
     :geometry {
       :type "Point"
       :coordinates [(Double/parseDouble (:lon (:attrs node))) (Double/parseDouble (:lat (:attrs node)))]
@@ -77,6 +76,7 @@
     {
      :type "Feature"
      :properties props
+     :id (:id props)
      :geometry {
       :type gtype
       :coordinates (if (= gtype "Polygon") [nodes] nodes)}}))
@@ -128,25 +128,24 @@
   (mapv
     #(Double/parseDouble %)
     (.split 
-      (slurp (io/file dir (node-to-file id)))
+      (l/get dir id)
       ",")))
 
 (defn swap-out
   "Write a node to swap"
   [dir id data] 
-  (spit 
-    (io/file dir (node-to-file id))
-    (str (first data) "," (second data))
-    )) 
+  (l/put dir id (str (first data) "," (second data)))) 
 
 (defn mk-dir
   "Give a writable dir to swap"
-  #_"TODO: random name"
-  [] (io/file (io/file (System/getProperty "java.io.tmpdir") "osmer") "test1"))
+  [] 
+  (let [tmp (io/file (System/getProperty "java.io.tmpdir") "osmer")]
+    (if (not (.exists tmp)) (.mkdir tmp))
+    (io/file tmp (str (java.util.UUID/randomUUID) ".ldb"))))
 
 (defn delete-dir
   "Recur delete a dir"
-  [dir] nil)
+  [dir db] (.close db) (l/destroy-db dir))
 
 (defn make-way-swap
   "Make way, using a swap"
@@ -159,38 +158,20 @@
   "Read a OSM xml, swapping to disk. Use for bigger files."
   [file fun] 
   (let [dir      (mk-dir)
+        db       (l/create-db dir {:key-decoder byte-streams/to-string :val-decoder byte-streams/to-string})
         xml      (open-xml file)]
     (doseq [node xml]
-      (if (= (:tag node) :node) 
-        (do
-          (if (>= (count (:content node)) 1)
-            (fun (make-node node)))
-          (swap-out dir (:id (:attrs node)) [(:lon (:attrs node)) (:lat (:attrs node))]))
-        (if (= (:tag node) :way)
-          (fun (make-way-swap dir node)))))
-    (delete-dir dir)
+      (try
+        (if (= (:tag node) :node) 
+          (do
+            (if (>= (count (:content node)) 1)
+              (fun (make-node node)))
+            (swap-out db (:id (:attrs node)) [(:lon (:attrs node)) (:lat (:attrs node))]))
+          (if (= (:tag node) :way)
+            (fun (make-way-swap db node))))
+      (catch Exception ex (do (println node) (.printStackTrace ex) ))))
+    (delete-dir dir db)
     ))
-
-(defn spitter
-  "Spit(write) a feature to a dir"
-  [dir geojson]
-   (spit 
-     (io/file dir (str (get-in geojson [:properties :id]) ".geojson"))
-     (json/write-str geojson)))
-
-(defn spit-all
-  "Spit whole XML as a FeatureCollection"
-  [file dest swap]
-  (with-open [writer (io/writer (io/file dest))]
-    (let [first? (atom true)]
-      (.write writer "{\"type\":\"FeatureCollection\",\"features\":[")
-      ((if swap read-stream-swap read-stream) file
-        (fn [feature]
-          (if @first?
-            (do (swap! first? (fn [a] false))
-                (.write writer (json/write-str feature)))
-            (.write writer (str "," (json/write-str feature) "\n")))))
-      (.write writer "]}"))))
 
 (defn query
   ""
