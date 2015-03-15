@@ -1,15 +1,26 @@
 (ns osm.core
+  (:require [riffle.write :as w] [riffle.read :as r])
+  (:require [clj-leveldb :as l] [byte-streams :as bs])
   (:require [clojure.java.io :as io]
             [clojure.data.xml :as xml]
             [clojure.data.json :as json]))
-(defn query
-  ""
-  [ & points ] nil)
+
+(defn bz2
+  "Returns a streaming Reader for a compressed bzip2 file."
+  [file]
+    (org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream. (io/input-stream file) true))
 
 (defn open-xml
   "Open the XML."
-  [file]
-   (rest (:content (xml/parse (io/reader (io/file file))))))
+  [file-in]
+   (let [file (io/file file-in)]
+     (rest 
+       (:content 
+         (xml/parse
+           (io/reader
+             (if (.endsWith (.getName file) ".bz2")
+               (bz2 file)
+               (io/input-stream file))))))))
 
 (defn get-props
   [el]
@@ -33,76 +44,135 @@
     }
    })
 
-(defn make-node-compact
-  ""
+(defn make-node-hash-from-tag
+  "Make a hashmap with node id and coords, to use with the ways"
   [node]
-  (double-array
-    (mapv #(Double/parseDouble %)
-      [(:id (:attrs node)) (:lon (:attrs node)) (:lat (:attrs node))])))
+  {(:id (:attrs node))
+    [(Double/parseDouble (:lon (:attrs node))) 
+     (Double/parseDouble (:lat (:attrs node)))]})
 
-(defn make-node-compact-1
-  ""
-  [node]
-  (double-array
-    [(Double/parseDouble (:id (:properties node)) )
-     (first (:coordinates (:geometry node)))
-     (second (:coordinates (:geometry node)))]))
-
-(defn get-nodes
+(defn get-nodes-for-point
   "Lazy sequence of nodes"
   [xml] 
-   (map make-node (take-while #(= (:tag %) :node) xml)))
+   (map make-node 
+    (filter 
+      (fn [n] (>= (count (:content n)) 1))
+      (take-while #(= (:tag %) :node) xml))))
 
-(defn get-nodes-compact
-  "Array of int array."
+(defn get-nodes-hash
+  "Merge nodes hashs, to use with ways"
   [xml]
-   (into-array (map make-node-compact (take-while #(= (:tag %) :node) xml))))
+   (reduce merge
+     (map make-node-hash-from-tag 
+        (take-while #(= (:tag %) :node) xml))))
+
+(defn get-way-refs
+  "Reffs of a way"
+  [way] (map #(get-in % [:attrs :ref]) (filter #(= (:tag %) :nd) (:content way))))
+
+(defn make-way-0
+  "Raw Way geojson object"
+  [props nodes]
+  (let [gtype   (if (= (first nodes) (last nodes)) "Polygon" "LineString")]
+    {
+     :type "Feature"
+     :properties props
+     :geometry {
+      :type gtype
+      :coordinates (if (= gtype "Polygon") [nodes] nodes)}}))
 
 (defn make-way
   "Transform a way element in a nice hash-map"
   [nodes way]
-  (let [refs    (map #(Double/parseDouble (get-in % [:attrs :ref])) (filter #(= (:tag %) :nd) (:content way)))
-        refset  (set refs)
-        nodeset (filter #(not (nil? (refset (first %)))) nodes)
-        nodes   (mapv (fn [r] (first (filter #(= (first %) r) nodeset))) refs)
-        gtype   (if (= (first refs) (last refs)) "Polygon" "LineString")
-        coords  (mapv rest nodes)]
-    {
-     :type "Feature"
-     :properties (get-props way)
-     :geometry {
-      :type gtype
-      :coordinates (if (= gtype "Polygon") [coords] coords)
-      }
-     }
-    ))
+  (let [refs    (get-way-refs way)
+        nodes   (map #(get nodes %) refs)]
+    (make-way-0 (get-props way) nodes)))
 
 (defn get-ways
   "Lazy sequence of ways"
   [nodes xml]
-   (map (partial make-way nodes) (take-while #(= (:tag %) :way) (drop (count nodes) xml))))
+   (map 
+     (partial make-way nodes) 
+     (take-while 
+       #(= (:tag %) :way) 
+       (drop (count nodes) xml))))
 
-(defn osm-stream-swap
-  ""
-  [file fun] nil)
-
-(defn osm-stream
+(defn read-stream
   "Convert from OSM xml to GEOJson"
   [file fun] 
-  #_"TODO: I should swap out to disk"
-  (let [xml   (open-xml file)
-        nodes (transient [])]
-    (doseq [node (get-nodes xml)]
-      (do
-        (fun node)
-        (conj! nodes (make-node-compact-1 node))
-      ))
-    (doseq [way (get-ways (persistent! nodes) xml)]
-      (fun way))
+  (let [xml   (open-xml file)]
+    (doseq [node (get-nodes-for-point xml)]
+      (fun node))
+    (doseq [way (get-ways (get-nodes-hash xml) xml)]
+      (fun way))))
+
+(defn read-all
+  "Read all OSM xml into a vector. Not recomended for big files"
+  [file] 
+  (let [all (transient [])]
+    (read-stream file
+      #(conj! all %))
+    (persistent! all)))
+
+(defn node-to-file
+  "A tree like structure to a file id"
+  [id] 
+   (let [parts (partition-all 2 id)]
+     (io/file (apply str (first parts))
+      (io/file (apply str (second parts))
+         (str (apply str (flatten (drop 2 parts))) ".tmp")))))
+
+(defn swap-in
+  "Read a swapped node"
+  [dir id] 
+  (mapv
+    #(Double/parseDouble %)
+    (.split 
+      (slurp (io/file dir (node-to-file id)))
+      ",")))
+
+(defn swap-out
+  "Write a node to swap"
+  [dir id data] 
+  (spit 
+    (io/file dir (node-to-file id))
+    (str (first data) "," (second data))
+    )) 
+
+(defn mk-dir
+  "Give a writable dir to swap"
+  #_"TODO: random name"
+  [] (io/file (io/file (System/getProperty "java.io.tmpdir") "osmer") "test1"))
+
+(defn delete-dir
+  "Recur delete a dir"
+  [dir] nil)
+
+(defn make-way-swap
+  "Make way, using a swap"
+  [dir way]
+  (let [refs    (get-way-refs way)
+        nodes   (mapv #(swap-in dir %) refs)]
+    (make-way-0 (get-props way) nodes)))
+
+(defn read-stream-swap
+  "Read a OSM xml, swapping to disk. Use for bigger files."
+  [file fun] 
+  (let [dir      (mk-dir)
+        xml      (open-xml file)]
+    (doseq [node xml]
+      (if (= (:tag node) :node) 
+        (do
+          (if (>= (count (:content node)) 1)
+            (fun (make-node node)))
+          (swap-out dir (:id (:attrs node)) [(:lon (:attrs node)) (:lat (:attrs node))]))
+        (if (= (:tag node) :way)
+          (fun (make-way-swap dir node)))))
+    (delete-dir dir)
     ))
 
 (defn spitter
-  "Spit(write) a feature to a file"
+  "Spit(write) a feature to a dir"
   [dir geojson]
    (spit 
      (io/file dir (str (get-in geojson [:properties :id]) ".geojson"))
@@ -114,14 +184,19 @@
   (with-open [writer (io/writer (io/file dest))]
     (let [first? (atom true)]
       (.write writer "{\"type\":\"FeatureCollection\",\"features\":[")
-      ((if swap osm-stream-swap osm-stream) file
+      ((if swap read-stream-swap read-stream) file
         (fn [feature]
           (if @first?
             (do (swap! first? (fn [a] false))
                 (.write writer (json/write-str feature)))
             (.write writer (str "," (json/write-str feature) "\n")))))
-      (.write writer "]}")
-      )
-    )
-  )
+      (.write writer "]}"))))
+
+(defn query
+  ""
+  [ & points ] nil)
+
+(defn changes
+  ""
+  [since] nil)
 
