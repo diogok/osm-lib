@@ -169,7 +169,7 @@
             (swap-out db (:id (:attrs node)) [(:lon (:attrs node)) (:lat (:attrs node))]))
           (if (= (:tag node) :way)
             (fun (make-way-swap db node))))
-      (catch Exception ex (do (println node) (.printStackTrace ex) ))))
+      (catch Exception ex (do (binding [*out* *err*] (do (println node) (.printStackTrace ex) ))))))
     (delete-dir dir db)
     ))
 
