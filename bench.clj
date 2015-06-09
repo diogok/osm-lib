@@ -1,4 +1,6 @@
-(use 'osm.core)
+(use 'osm.reader)
+
+(println "Starting")
 
 (time
   (let [brazil (clojure.java.io/file "data" "brazil-latest.osm.bz2")
