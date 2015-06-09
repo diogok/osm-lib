@@ -20,13 +20,13 @@ The functions work emitting GeoJSON individual features for each point (node, in
 }
 ```
 
-There is also two ways to operate: Fully in RAM and swapping to disk. 
+There are two ways to operate: Fully in RAM and swapping to disk. 
 
 In RAM (default) is recommended for smaller datasets. How small depends on available RAM, but on with 1GB you can process about a XML of about xxGB or circa xxMB bz2.
 
 For bigger data, or if you are in doubt, you can use the swapping to disk version. This will use a compact temporary LevelDB (deleted at the end) at your temporary folder to hold some temporary data. This will use about 1.5x of the bz2 size or 0.11x the raw xml size. 
 
-The time depends a lot on the harddrive, on my regular spining notebook harddrive it takes xx minutes, using a 600MB DB and less them 1GB RAM to process brazil.osm, reading a 400MB bz2 (5.2GB xml).
+The time depends a lot on the harddrive, on my regular spining notebook harddrive it takes less than 30 minutes, using a 600MB DB and less than 1GB of RAM to process brazil osm data, reading a 400MB bz2 (5.2GB xml), with X features total.
 
 ### Library
 
