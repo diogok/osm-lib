@@ -11,6 +11,7 @@
                   #_(println @counter ":" (:id (:properties n)) "->" (get-in n [:geometry :coordinates]))
                   (swap! counter inc) 
                   (swap! last-node (fn[a] n)))))
+    (println counter)
     (assert (= counter 1000))
     (assert (= (:id (:properties @last-node)) "123"))))
 

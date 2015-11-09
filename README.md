@@ -22,7 +22,7 @@ The functions work emitting GeoJSON individual features for each point (node, in
 
 There are two ways to operate: Fully in RAM and swapping to disk. 
 
-In RAM (default) is recommended for smaller datasets. How small depends on available RAM, but on with 1GB you can process about a XML of about xxGB or circa xxMB bz2.
+In RAM (default) is recommended for smaller datasets. How small depends on available RAM, but with 1GB you can process a XML of about ??GB or circa ??MB bz2.
 
 For bigger data, or if you are in doubt, you can use the swapping to disk version. This will use a compact temporary LevelDB (deleted at the end) at your temporary folder to hold some temporary data. This will use about 1.5x of the bz2 size or 0.11x the raw xml size. 
 
@@ -72,23 +72,6 @@ Or write all to a single geojson FeatureCollection, not recommended on big files
 ```clojure
   (w/spit-all "osm.xml.bz2" "osm.geojson")
   (w/spit-all-swap "osm.xml.bz2" "osm.geojson")
-```
-
-Also some webhooks:
-
-```clojure
-  (w/web "osm.xml.bz2" 
-   { ;; available all clj-http options
-    :url "http://domain.com/uri"
-    :method "POST" ;; only POST or PUT, and PUT will append /id on url. Default to POST.
-    :bulk true ;; If should send in groups (good for performance). Defaul to false.
-    :bulk-type :collection ;; Type fo bulk. :collection to FeatureCollection, :prop to use a property and an array of features and :raw to send just to array. Default to :raw.
-    :bulk-prop :docs ;; if :bulk-type :prop, the property to put data under. Default to :docs.
-    :bulk-size 500 ;; Size of bulk request. Default to 500.
-    :pre fn ;; pass each feature on a function before sending. Default to nil.
-   })
-
-  (w/couchdb "osm.xml.bz2" "http://cloudant.com/your_db") ;; alias to bulk into couchdb
 ```
 
 ### Command Line

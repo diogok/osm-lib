@@ -1,4 +1,5 @@
 (ns osm.reader
+  (:require [clojure.core.async :refer [<! <!! >! >!! chan close! go-loop]])
   (:require [clj-leveldb :as l] [byte-streams :as bs])
   (:require [clojure.java.io :as io]
             [clojure.data.xml :as xml]))
@@ -33,15 +34,12 @@
 (defn make-node
   "Transform node element in nice hash-map"
   [node]
-   {
-    :type "Feature"
+   {:type "Feature"
     :properties (get-props node)
     :id (:id (:attrs node))
     :geometry {
       :type "Point"
-      :coordinates [(Double/parseDouble (:lon (:attrs node))) (Double/parseDouble (:lat (:attrs node)))]
-    }
-   })
+      :coordinates [(Double/parseDouble (:lon (:attrs node))) (Double/parseDouble (:lat (:attrs node)))]}})
 
 (defn make-node-hash-from-tag
   "Make a hashmap with node id and coords, to use with the ways"
@@ -158,24 +156,40 @@
   "Read a OSM xml, swapping to disk. Use for bigger files."
   [file fun] 
   (let [dir      (mk-dir)
-        db       (l/create-db dir {:key-decoder byte-streams/to-string :val-decoder byte-streams/to-string})
-        xml      (open-xml file)]
+        db       (l/create-db dir {:key-decoder byte-streams/to-string :val-decoder byte-streams/to-string :blocksize (* 1024 1024)})
+        xml      (open-xml file)
+        swap     (chan 2)
+        out      (chan 2)
+        done     (chan 1)]
+    (go-loop [node (<! swap)]
+      (if (not (nil? node))
+        (do
+          (swap-out db (:id (:attrs node)) [(:lon (:attrs node)) (:lat (:attrs node))])
+          (recur (<! swap)))))
+    (go-loop [node (<! out)]
+      (if (nil? node)
+        (close! done)
+        (do 
+          (if (= (:tag node) :node)
+            (fun (make-node node))
+            (fun (make-way-swap db node)))
+          (recur (<! out)))))
     (doseq [node xml]
       (try
-        (if (= (:tag node) :node) 
-          (do
-            (if (>= (count (:content node)) 1)
-              (fun (make-node node)))
-            (swap-out db (:id (:attrs node)) [(:lon (:attrs node)) (:lat (:attrs node))]))
-          (if (= (:tag node) :way)
-            (fun (make-way-swap db node))))
-      (catch Exception ex (do (binding [*out* *err*] (do (println node) (.printStackTrace ex) ))))))
-    (delete-dir dir db)
-    ))
-
-(defn query
-  ""
-  [ & points ] nil)
+        (condp = (:tag node)
+          :node 
+            (do
+              (>!! swap node)
+              (if (>= (count (:content node)) 1)
+                (>!! out node)))
+          :way
+            (>!! out node)
+           nil)
+      (catch Exception ex (do (binding [*out* *err*] (do (println node) (.printStackTrace ex)))))))
+    (close! swap)
+    (close! out)
+    (<!! done)
+    (delete-dir dir db)))
 
 (defn changes
   ""
