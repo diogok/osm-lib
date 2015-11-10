@@ -26,7 +26,9 @@ In RAM (default) is recommended for smaller datasets. How small depends on avail
 
 For bigger data, or if you are in doubt, you can use the swapping to disk version. This will use a compact temporary LevelDB (deleted at the end) at your temporary folder to hold some temporary data. This will use about 1.5x of the bz2 size or 0.11x the raw xml size. 
 
-The time depends a lot on the harddrive, on my regular spining notebook harddrive it takes less than 30 minutes, using a 600MB DB and less than 1GB of RAM to process brazil osm data, reading a 400MB bz2 (5.2GB xml), with X features total.
+The time depends a lot on the harddrive:
+
+On Samsung Chromebook 2 SSD it takes 53 minutes to process a 380MB bz2 of Brazil data with 3,740,964 features, taking less them 100MB of RAM.
 
 ### Library
 

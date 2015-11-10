@@ -9,9 +9,9 @@
     (read-stream-swap brazil
       (fn [n] (do 
                   #_(println @counter ":" (:id (:properties n)) "->" (get-in n [:geometry :coordinates]))
+                  (if (= 0 (mod @counter 1000)) (println "+1000"))
                   (swap! counter inc) 
                   (swap! last-node (fn[a] n)))))
-    (println counter)
-    (assert (= counter 1000))
-    (assert (= (:id (:properties @last-node)) "123"))))
+    (println @counter)
+    (assert (= @counter 3740964))))
 
