@@ -1,7 +1,7 @@
 (ns osm.writer-test
   (:require [clojure.java.io :as io])
   (:require [ring.adapter.jetty :refer [run-jetty]])
-  (:use [clojure.data.json :only [read-str write-str]])
+  (:use [clojure.data.json :only [read-str write-str read]])
   (:use osm.writer)
   (:use midje.sweet))
 
@@ -25,9 +25,12 @@
   (slurp (io/file data-dir "all.geojson")) => (slurp (io/file "test-data" "demo.geojson")))
 
 (fact "Can post to web"
-  (let [handler (fn [req] (println "->" req) "Ok.")
+  (let [acc (atom 0)
+        handler (fn [req] (swap! acc + (count (get (read (io/reader (:body req))) "features"))) "Ok.")
         server  (run-jetty handler {:port 3333 :join? false})]
     (post demo "http://localhost:3333" 10)
     (Thread/sleep 1000)
-    (.stop server)))
+    (.stop server)
+    @acc => 121
+    ))
 
