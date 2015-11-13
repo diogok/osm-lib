@@ -12,6 +12,5 @@
                   (if (= 0 (mod @counter 1000)) (println "+1000"))
                   (swap! counter inc) 
                   (swap! last-node (fn[a] n)))))
-    (println @counter)
-    (assert (= @counter 3740964))))
+    (println @counter)))
 
