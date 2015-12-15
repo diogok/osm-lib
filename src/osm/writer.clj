@@ -1,6 +1,7 @@
 (ns osm.writer
   (:use osm.reader)
   (:use batcher.core)
+  (:require [clojure.core.async :refer [<! <!! >! >!! chan close! go-loop]])
   (:require [clj-http.lite.client :as http])
   (:require [clojure.java.io :as io]
             [clojure.data.json :as json]))
@@ -49,13 +50,13 @@
      :body (json/write-str {:type "FeatureCollection" :features data})}))
 
 (defn post
-  ([file url] (post file url java.lang.Integer/MAX_VALUE false))
-  ([file url limit] (post file url limit false))
+  ([file url] (post file url 512 true))
+  ([file url limit] (post file url limit true))
   ([file url limit swap] 
-   (let [bat (batcher limit 0 (partial post-0 url))]
+   (let [bat (batcher {:size limit :fn (partial post-0 url)})]
      ((if swap read-stream-swap read-stream) 
       file
-      (partial put bat))
+      (partial >!! bat))
      (Thread/sleep 1000)
-     (end bat))))
+     (close! bat))))
 

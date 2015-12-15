@@ -3,14 +3,14 @@
   :license {:name "MIT"}
   :main osm.cli
   :dependencies [[org.clojure/clojure "1.7.0"]
-                 [org.clojure/core.async "0.1.346.0-17112a-alpha"]
+                 [org.clojure/core.async "0.2.371"]
                  [org.clojure/data.xml "0.0.8"]
                  [org.clojure/data.json "0.2.6"]
                  [org.clojure/tools.cli "0.3.3"]
                  [clj-http-lite "0.3.0"]
                  [factual/clj-leveldb "0.1.1"]
                  [byte-streams "0.1.13"]
-                 [batcher "0.0.2"]
+                 [batcher "0.1.1"]
                  [org.apache.commons/commons-compress "1.9"]]
   :repositories [["clojars" {:sign-releases false}]]
   :profiles {:uberjar {:aot :all}
