@@ -13,7 +13,7 @@
     :default *out*
     :validate [#(not (.exists (file %))) "Output file already exists"]]
    ["-c" "--count NUMBER" "Number of features by POST, in case of URL output."
-    :default java.lang.Integer/MAX_VALUE
+    :default 512
     :parse-fn #(Integer/valueOf %)
     :validate [#(>= % 0) "Only positive values for count."]]
    ["-s" "--swap" "If is to use swap file. Better for big datasets."
