@@ -1,4 +1,4 @@
-(defproject osm "0.0.1"
+(defproject osm "0.0.2"
   :description "Working with OpenStreetMaps data"
   :license {:name "MIT"}
   :main osm.cli
