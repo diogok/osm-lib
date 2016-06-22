@@ -13,12 +13,12 @@
     :default nil]
    ["-o" "--output OUTPUT" "Output GeoJSON file, or URL to POST. Default to stdout."
     :default *out*
-    :validate [#(not (.exists (file %))) "Output file already exists"]]
+    :validate [#(or (.startsWith % "http") (not (.exists (file %))) ) "Output file already exists"]]
    ["-c" "--count NUMBER" "Number of features by POST, in case of URL output."
     :default 512
     :parse-fn #(Integer/valueOf %)
     :validate [#(>= % 0) "Only positive values for count."]]
-   ["-s" "--swap" "If is to use swap file. Better for big datasets."
+   ["-s" "--swap true" "If is to use swap file. Better for big datasets."
     :default true
     :parse-fn #(not (or (= "false") (= "no")))]])
 
@@ -36,8 +36,7 @@
 
 (defn process
   [input output limit swap f]
-  (println (f2f f))
-  (if (.startsWith output "http//")
+  (if (or (.startsWith output "http://") (.startsWith output "https://"))
     (post input output limit swap (f2f f))
     (spit-all input output swap (f2f f))))
 
