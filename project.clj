@@ -13,6 +13,7 @@
                  [batcher "0.1.1"]
                  [org.apache.commons/commons-compress "1.11"]]
   :repositories [["clojars" {:sign-releases false}]]
+  :uberjar-name "osm.jar"
   :profiles {:uberjar {:aot :all}
              :jar {:aot :all}
              :dev {:dependencies [[midje "1.8.3"]
