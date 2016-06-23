@@ -11,8 +11,10 @@
   (fn [obj]
     (every?
       (fn [kv]
-        (= (get (:properties obj) (key kv))
-           (val kv)))
+        (if (= "*" (val kv))
+          (not (nil? (get (:properties obj) (key kv))))
+          (= (get (:properties obj) (key kv))
+             (val kv))))
       hashmap)))
 
 (defn all

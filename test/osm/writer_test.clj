@@ -11,9 +11,11 @@
 (if (not (.exists data-dir)) (.mkdir data-dir))
 
 (fact "Matcher works"
-  (let [match (matcher {:foo "bar"})]
-    (match {:properties {:foo "bar"} }) => true
-    (match {:foo "baz"}) => false
+  (let [match (matcher {:foo "bar"})
+        m1    (matcher {:foo "*"})]
+    (match {:properties {:foo "bar"}}) => true
+    (match {:properties {:foo "baz"}}) => false
+    (m1 {:properties {:foo "watever"}}) => true
     ))
 
 (fact "Spit it out"
