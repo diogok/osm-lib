@@ -39,23 +39,30 @@
   "Spit(write) a feature to a dir, swapping"
   [file dest] (spit-each file dest true))
 
+(defn spit-all-0
+  [writer read-fn file match]
+    (.write writer "{\"type\":\"FeatureCollection\",\"features\":[")
+    (let [first? (atom true)]
+      (read-fn file
+        (fn [feature]
+          (if (match feature)
+            (if @first?
+              (do (swap! first? (fn [a] false))
+                  (.write writer (json/write-str feature)))
+              (.write writer (str "," (json/write-str feature) "\n")))))))
+    (.write writer "]}"))
+
 (defn spit-all
   "Spit whole XML as a FeatureCollection"
   ([file dest] (spit-all file dest false))
   ([file dest swap] (spit-all file dest swap nil))
   ([file dest swap f]
-    (with-open [writer (io/writer dest)]
-      (let [first? (atom true)
-            match (if (nil? f) all (matcher f))]
-        (.write writer "{\"type\":\"FeatureCollection\",\"features\":[")
-        ((if swap read-stream-swap read-stream) file
-          (fn [feature]
-            (if (match feature)
-              (if @first?
-                (do (swap! first? (fn [a] false))
-                    (.write writer (json/write-str feature)))
-                (.write writer (str "," (json/write-str feature) "\n"))))))
-        (.write writer "]}")))))
+    (let [match (if (nil? f) all (matcher f))
+          read-fn (if swap read-stream-swap read-stream)]
+        (if (not (= *out* dest))
+          (with-open [writer (io/writer dest)]
+            (spit-all-0 writer read-fn file match))
+            (spit-all-0 (io/writer dest) read-fn file match)))))
 
 (defn spit-all-swap
   "Spit whole XML as a FeatureCollection, swapping to disk"
