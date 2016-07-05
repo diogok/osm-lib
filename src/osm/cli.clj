@@ -13,7 +13,7 @@
     :default nil]
    ["-o" "--output OUTPUT" "Output GeoJSON file, or URL to POST. Default to stdout."
     :default *out*
-    :validate [#(or (.startsWith % "http") (not (.exists (file %))) ) "Output file already exists"]]
+    :validate [#(or (= *out* %) (.startsWith % "http") (not (.exists (file %))) ) "Output file already exists"]]
    ["-c" "--count NUMBER" "Number of features by POST, in case of URL output."
     :default 512
     :parse-fn #(Integer/valueOf %)
@@ -36,20 +36,22 @@
 
 (defn process
   [input output limit swap f]
-  (if (or (.startsWith output "http://") (.startsWith output "https://"))
+  (if (and (not (= *out* output)) (or (.startsWith output "http://") (.startsWith output "https://") ))
     (post input output limit swap (f2f f))
     (spit-all input output swap (f2f f))))
 
 (defn -main
   [ & args ]
   (let [opts (parse-opts args options)]
-    (println "OpenStreetMaps to GeoJSON tool.")
+    (binding [*out* *err*]
+      (println "OpenStreetMaps to GeoJSON tool."))
     (cond
       (:help (:options opts)) 
         (println (:summary opts))
       (:errors opts) 
-        (doseq [err (:errors opts)]
-          (println err))
+        (binding [*out* *err*]
+          (doseq [err (:errors opts)]
+            (println err)))
       (and (not (nil? (:input (:options opts))))
            (not (nil? (:output (:options opts))))) 
         (process (:input (:options opts)) 

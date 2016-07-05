@@ -41,14 +41,16 @@
 
 (defn spit-all-0
   [writer read-fn file match]
-    (.write writer "{\"type\":\"FeatureCollection\",\"features\":[")
+    (.write writer "{\"type\":\"FeatureCollection\",\"features\":[\n")
     (let [first?  (atom true)
           counter (atom 0)]
       (read-fn file
         (fn [feature]
           (if (match feature)
             (do
-              (binding [*out* *err*] (println "Writing " (swap! counter inc)))
+              (binding [*out* *err*] 
+                (println "Writing #" (swap! counter inc)
+                                     (:properties feature)))
               (if @first?
                 (do (swap! first? (fn [a] false))
                     (.write writer (json/write-str feature)))
