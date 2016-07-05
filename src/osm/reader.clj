@@ -171,8 +171,12 @@
         (close! done)
         (do 
           (if (= (:tag node) :node)
-            (fun (make-node node))
-            (fun (make-way-swap db node)))
+            (do
+              (binding [*out* *err*] (println "Got node " (:attrs node )))
+              (fun (make-node node)))
+            (do
+              (binding [*out* *err*] (println "Got way " (:attrs node )))
+              (fun (make-way-swap db node))))
           (recur (<! out)))))
     (doseq [node xml]
       (try
