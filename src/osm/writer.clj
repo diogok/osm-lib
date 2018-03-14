@@ -67,7 +67,7 @@
         (if (not (= *out* dest))
           (with-open [writer (io/writer dest)]
             (spit-all-0 writer read-fn file match))
-            (spit-all-0 (io/writer dest) read-fn file match)))))
+          (spit-all-0 (io/writer dest) read-fn file match)))))
 
 (defn spit-all-swap
   "Spit whole XML as a FeatureCollection, swapping to disk"
@@ -76,11 +76,15 @@
 
 (defn post-0
   [url data]
-  (http/post url
-    {:content-type :json
-     :conn-timeout 15000
-     :socket-timeout 15000
-     :body (json/write-str {:type "FeatureCollection" :features data})}))
+  (try
+    (http/post url
+      {:content-type :json
+       :conn-timeout 15000
+       :socket-timeout 15000
+       :body (json/write-str {:type "FeatureCollection" :features data})})
+    (catch Exception e
+      (binding [*out* *err*]
+        (.printStackTrace e)))))
 
 (defn post
   ([file url] (post file url 512 true))
@@ -95,5 +99,6 @@
         (if (match feat)
           (>!! bat feat))))
      (Thread/sleep 1000)
+     #_"TODO: echo done"
      (close! bat))))
 

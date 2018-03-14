@@ -11,3 +11,5 @@ pom.xml.asc
 *.swp
 *~
 .vagrant
+err
+log

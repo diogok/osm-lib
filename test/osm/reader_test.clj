@@ -4,8 +4,8 @@
   (:use osm.reader)
   (:use midje.sweet))
 
-(def demo (io/file "test-data" "demo.osm"))
-(def demo-bz2 (io/file "test-data" "demo.osm.bz2"))
+(def demo (io/file "test/data" "demo.osm"))
+(def demo-bz2 (io/file "test/data" "demo.osm.bz2"))
 
 (fact "Can open XML"
   (count (open-xml demo)) => 843
