@@ -39,7 +39,7 @@ On my desktop, with an Intel i5 quad-core and nice Sata3 7200RPM, it takes 20- m
 With leningen:
 
 ```clojure
-  [diogok/osm "0.0.2"]
+  [diogok/osm "0.0.4"]
 ```
 
 And require the functions:
