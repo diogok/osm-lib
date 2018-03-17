@@ -7,7 +7,9 @@
 
 (def demo (io/file "test/data" "demo.osm.bz2"))
 
-(def data-dir (io/file "data" "tmp"))
+(def data-dir-0 (io/file "data"))
+(if (not (.exists data-dir-0)) (.mkdir data-dir-0))
+(def data-dir (io/file data-dir-0 "tmp"))
 (if (not (.exists data-dir)) (.mkdir data-dir))
 
 (fact "Matcher works"

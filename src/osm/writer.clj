@@ -2,7 +2,7 @@
   (:use osm.reader)
   (:use batcher.core)
   (:require [clojure.core.async :refer [<! <!! >! >!! chan close! go-loop]])
-  (:require [clj-http.lite.client :as http])
+  (:require [clj-http.client :as http])
   (:require [clojure.java.io :as io]
             [clojure.data.json :as json]))
 
@@ -53,9 +53,9 @@
                                      (:properties feature)))
               (if @first?
                 (do (swap! first? (fn [a] false))
-                    (.write writer (json/write-str feature)))
+                    (.write writer (str (json/write-str feature) "\n")))
                 (.write writer (str "," (json/write-str feature) "\n"))))))))
-    (.write writer "]}"))
+    (.write writer "]}\n"))
 
 (defn spit-all
   "Spit whole XML as a FeatureCollection"
