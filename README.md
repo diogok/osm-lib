@@ -43,7 +43,7 @@ With leningen:
 And require the functions:
 
 ```clojure
-  (:require [osm.reader :as r] [osm.writer :as w])
+  (require '[osm.reader :as r] '[osm.writer :as w])
 ```
 
 You can use both the Bz2 (recommended) as input or the raw xml file.
@@ -67,8 +67,8 @@ For bigger data, the functions can use to the disk to avoid running out of RAM:
 There is one function to write each geojson to files in a dir:
 
 ```clojure
-  (spit-each "osm.xml.bz2" "dir")
-  (spit-each-swap "osm.xml.bz2" "dir")
+  (w/spit-each "osm.xml.bz2" "dir")
+  (w/spit-each-swap "osm.xml.bz2" "dir")
 ```
 
 Or write all to a single geojson FeatureCollection, not recommended on big files but swapping is available (but still not recomeded).
@@ -83,7 +83,7 @@ There is also a, more experimental, feature to send the data to a web hook.
 This will send the data as  a featurecollection of up to 512 features.
 
 ```clojure
-    (post "osm.xml.bz2" "http://localhost:8080/myhook")
+  (w/post "osm.xml.bz2" "http://localhost:8080/myhook")
 ```
 
 ### Command Line
